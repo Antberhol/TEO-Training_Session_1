@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from datetime import date, datetime
 from typing import NamedTuple
+import csv
 
 
 class Alquiler(NamedTuple):
@@ -22,8 +23,25 @@ def parse_fecha(cadena: str) -> date:
 
 
 def lee_alquileres(ruta: str) -> list[Alquiler]:
-    """Lee el CSV y devuelve una lista de Alquiler."""
-    raise NotImplementedError
+    lista_alquileres = []
+    with open(ruta, encoding= "utf-8") as f:
+        lector = csv.reader(f)
+        next(lector)
+        for campos in lector:
+            nombre = campos[0]
+            dni = campos[1]
+            fecha_inicio = parse_fecha(campos[2])
+            fecha_fin= parse_fecha(campos[3])
+            estacion = campos[4]
+            bici_tipo = campos[5]
+            precio_dia = float(campos[6])
+            servicios = campos[7].split(',')
+            if servicios == "":
+                servicios = []
+                
+            alquiler = Alquiler(nombre, dni, fecha_inicio, fecha_fin, estacion, bici_tipo, precio_dia, servicios)
+            lista_alquileres.append(alquiler)
+    return lista_alquileres   
 
 
 def total_facturado(
@@ -31,24 +49,33 @@ def total_facturado(
     fecha_ini: date | None = None,
     fecha_fin: date | None = None,
 ) -> float:
-    """Suma lo cobrado en el rango de fechas (fecha_inicio)."""
-    raise NotImplementedError
-
+    total = 0.0
+    for alquiler in alquileres:
+        if alquiler.fecha_inicio ==fecha_ini  and alquiler.fecha_fin == fecha_fin:
+            total = (alquiler.fecha_fin - alquiler.fecha_inicio).days * alquiler.precio_dia
+    return total
 
 def alquileres_mas_largos(
     alquileres: list[Alquiler],
     n: int = 3,
 ) -> list[tuple[str, date]]:
-    """Top-N de alquileres más largos (nombre, fecha_inicio)."""
-    raise NotImplementedError
+    diccionario = defaultdict()
+    lista = []
+    for alquiler in alquileres:
+        diccionario[alquiler.nombre] = (alquiler.fecha_fin - alquiler.fecha_inicio).days
+        lista = sorted(diccionario.items(), key=lambda x: x[1], reverse=True)
+    return lista[:n]
 
 
-def cliente_mayor_facturacion(
-    alquileres: list[Alquiler],
-    servicios: set[str] | None = None,
-) -> tuple[str, float]:
-    """Cliente con mayor gasto opcionalmente filtrando por servicios."""
-    raise NotImplementedError
+def cliente_mayor_facturacion(alquileres, servicios=None):
+    dicc = defaultdict(float)
+
+    for alquiler in alquileres:
+        if servicios is None or servicios <= alquiler.servicios:
+            dias = (alquiler.fecha_fin - alquiler.fecha_inicio).days
+            dicc[alquiler.dni] += dias * alquiler.precio_dia
+
+    return max(dicc.items(), key=lambda x: x[1])
 
 
 def servicio_top_por_mes(
